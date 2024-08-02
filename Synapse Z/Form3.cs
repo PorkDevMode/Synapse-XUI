@@ -24,6 +24,8 @@ namespace Synapse_Z
         public ScriptHub()
         {
             InitializeComponent();
+            ThemeManager.Instance.ApplyTheme(this);
+            synlabel.Text = $"{GlobalVariables.ExploitName} - Script Hub";
             string ranString = GenerateRandomString(12);
             this.Text = ranString;
             this.ShowInTaskbar = true;
@@ -56,18 +58,18 @@ namespace Synapse_Z
             // Draw background
             if ((e.State & DrawItemState.Selected) == DrawItemState.Selected)
             {
-                e.Graphics.FillRectangle(new SolidBrush(Color.FromArgb(54, 72, 88)), e.Bounds);
+                e.Graphics.FillRectangle(new SolidBrush(Execute.FlatAppearance.MouseDownBackColor), e.Bounds);
             }
             else
             {
-                e.Graphics.FillRectangle(new SolidBrush(ScriptHubBox.BackColor), e.Bounds);
+                e.Graphics.FillRectangle(new SolidBrush(ThemeManager.Instance.GetThemeColor("ScriptHub.ListBox.BackColor")), e.Bounds);
             }
 
             // Set font to 8pt
             Font font = new Font(e.Font.FontFamily, 9, e.Font.Style);
 
             // Draw text
-            e.Graphics.DrawString(ScriptHubBox.Items[e.Index].ToString(), font, Brushes.White, e.Bounds, StringFormat.GenericDefault);
+            e.Graphics.DrawString(ScriptHubBox.Items[e.Index].ToString(), font, new SolidBrush(ThemeManager.Instance.GetThemeColor("ScriptHub.ListBox.ForeColor")), e.Bounds, StringFormat.GenericDefault);
 
             // Draw grey outline if selected
             if ((e.State & DrawItemState.Selected) == DrawItemState.Selected)
@@ -187,8 +189,14 @@ namespace Synapse_Z
                 }
             }
         }
-        private async void ExecuteScript(string text)
+
+
+
+        private async void ExecuteScript(string script, string pid = null)
         {
+            string uniqueId = Guid.NewGuid().ToString(); // Generate a unique identifier
+
+            await Task.Delay(1);
             if (GlobalVariables.injecting == false && GlobalVariables.isDone == true)
             {
                 try
@@ -199,10 +207,12 @@ namespace Synapse_Z
                         Directory.CreateDirectory(schedulerPath);
                     }
 
-                    string filePath = Path.Combine(schedulerPath, Guid.NewGuid().ToString() + ".lua");
+                    // Name the file according to the pid if provided
+                    string fileName = pid != null ? $"PID{pid}_{Guid.NewGuid().ToString()}.lua" : $"{Guid.NewGuid().ToString()}.lua";
+                    string filePath = Path.Combine(schedulerPath, fileName);
                     using (StreamWriter writer = new StreamWriter(filePath))
                     {
-                        await writer.WriteLineAsync(text + "@@FileFullyWritten@@");
+                        await writer.WriteLineAsync(script + "@@FileFullyWritten@@");
                     }
                 }
                 catch (Exception ex)
@@ -213,6 +223,25 @@ namespace Synapse_Z
             else
             {
                 MessageBox.Show("Not Injected!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void ExecuteForSelectedClients(string unescapedString)
+        {
+            bool anySelected = false;
+
+            foreach (var entry in GlobalVariables.ExecutionPIDS)
+            {
+                if ((bool)entry.Value)  // If the status is True
+                {
+                    anySelected = true;
+                    ExecuteScript(unescapedString, entry.Key);
+                }
+            }
+
+            if (!anySelected)
+            {
+                MessageBox.Show("No selected clients.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
 
@@ -235,7 +264,7 @@ namespace Synapse_Z
                         // Read the contents of the main.lua file
                         string fileContent = File.ReadAllText(mainLuaPath);
 
-                       ExecuteScript(fileContent);
+                       ExecuteForSelectedClients(fileContent);
                     }
                     catch (Exception ex)
                     {
