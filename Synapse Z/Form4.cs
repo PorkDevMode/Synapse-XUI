@@ -288,10 +288,16 @@ namespace Synapse_Z
             {
                 Clipboard.SetText(GlobalVariables.CurrentKey);
                 MessageBox.Show("Copied your current key to your clipboard!", "Success!");
-            } else
+            }
+            else
             {
                 MessageBox.Show("No current key!", "Error!");
             }
+        }
+
+        private void synlabel_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }
